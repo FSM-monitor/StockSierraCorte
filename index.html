@@ -76,114 +76,153 @@
   </div>
 
   <script>
-    // (Debe terminar en /exec)
-    const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbzHIG8qPb8qXcKdRaqwfhGf6N1YnhHFrRa0wsDEqDE34LpsxH15DQ5RSCHu2F8lpt4/exec";
+  const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbzjmNtAKjjM8Azok_mWVM82x2WYv4pHhR65CV-dYh4ZgOuufATIqgHS_rt-QQpIq7g/exec";
+  let rawData = [];
+
+  window.onload = loadData;
+
+  async function loadData() {
+    const loader = document.getElementById('loader');
+    const tableBody = document.getElementById('tableBody');
+    const emptyState = document.getElementById('emptyState');
     
-    let rawData = [];
+    loader.classList.remove('hidden');
+    tableBody.innerHTML = '';
+    emptyState.classList.add('hidden');
 
-    window.onload = loadData;
-
-    async function loadData() {
-      const loader = document.getElementById('loader');
-      const tableBody = document.getElementById('tableBody');
-      const emptyState = document.getElementById('emptyState');
+    try {
+      const response = await fetch(WEB_APP_URL);
+      const data = await response.json();
       
-      loader.classList.remove('hidden');
-      tableBody.innerHTML = '';
-      emptyState.classList.add('hidden');
+      if (data.error) throw new Error(data.error);
+      
+      rawData = data;
+      renderTable(data);
+    } catch (err) {
+      console.error(err);
+      alert("Error de conexión con la base de datos");
+    } finally {
+      loader.classList.add('hidden');
+    }
+  }
 
-      try {
-        const response = await fetch(WEB_APP_URL);
-        const data = await response.json();
-        
-        if (data.error) throw new Error(data.error);
-        
-        rawData = data;
-        renderTable(data);
-      } catch (err) {
-        console.error(err);
-        alert("Error de conexión: No se puede conectar a la base de datos");
-      } finally {
-        loader.classList.add('hidden');
-      }
+  function renderTable(data) {
+    const body = document.getElementById('tableBody');
+    body.innerHTML = ""; // Limpiamos antes de renderizar
+
+    if (data.length === 0) {
+      document.getElementById('emptyState').classList.remove('hidden');
+      return;
     }
 
-    function renderTable(data) {
-      const body = document.getElementById('tableBody');
-      if (data.length === 0) {
-        document.getElementById('emptyState').classList.remove('hidden');
-        return;
-      }
+    data.forEach((item) => {
+      // Usamos el código como ID único para evitar problemas al filtrar
+      const safeId = item.codigo.replace(/[^a-zA-Z0-9]/g, '_'); 
+      
+      const row = document.createElement('tr');
+      row.className = "hover:bg-slate-800/50 transition-colors cursor-pointer group";
+      row.onclick = () => toggleDetail(safeId, item.codigo);
+      
+      row.innerHTML = `
+        <td class="px-6 py-5 whitespace-nowrap font-mono text-sm text-cyan-400">${item.codigo}</td>
+        <td class="px-6 py-5 text-sm text-slate-300 font-medium">${item.descripcion}</td>
+        <td class="px-6 py-5 whitespace-nowrap text-right font-bold text-xl text-white">
+          ${item.stock} <span class="text-xs text-slate-500 ml-1 font-normal">u</span>
+        </td>
+        <td class="px-6 py-5 text-center">
+          <span class="text-slate-500 group-hover:text-cyan-400 transition" id="icon-${safeId}">
+            <svg class="w-6 h-6 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+          </span>
+        </td>
+      `;
+      body.appendChild(row);
 
-      data.forEach((item, index) => {
-        const row = document.createElement('tr');
-        row.className = "hover:bg-slate-800/50 transition-colors cursor-pointer group";
-        row.onclick = () => toggleDetail(index);
-        row.innerHTML = `
-          <td class="px-6 py-5 whitespace-nowrap font-mono text-sm text-cyan-400">${item.codigo}</td>
-          <td class="px-6 py-5 text-sm text-slate-300 font-medium">${item.descripcion}</td>
-          <td class="px-6 py-5 whitespace-nowrap text-right font-bold text-xl text-white">
-            ${item.stock} <span class="text-xs text-slate-500 ml-1 font-normal">m</span>
-          </td>
-          <td class="px-6 py-5 text-center">
-            <span class="text-slate-500 group-hover:text-cyan-400 transition">
-              <svg class="w-6 h-6 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
-            </span>
-          </td>
-        `;
-        body.appendChild(row);
-
-        const detailRow = document.createElement('tr');
-        detailRow.id = `detail-${index}`;
-        detailRow.className = "hidden bg-slate-900/30 shadow-inner";
-        detailRow.innerHTML = `
-          <td colspan="4" class="px-6 py-6">
-            <div class="expanded-detail overflow-hidden border border-slate-800 rounded-xl bg-slate-950/50">
-              <div class="p-4 border-b border-slate-800 bg-slate-900/50 flex justify-between items-center">
-                <h4 class="text-xs font-bold uppercase text-slate-500 tracking-widest">Historial de Movimientos</h4>
-                <span class="text-xs text-slate-600 italic">Sierra Corte Depot</span>
-              </div>
-              <table class="min-w-full text-xs">
-                <thead class="text-slate-500">
-                  <tr>
-                    <th class="px-4 py-3 font-semibold">Fecha</th>
-                    <th class="px-4 py-3 font-semibold">Comprobante</th>
-                    <th class="px-4 py-3 font-semibold">Circuito</th>
-                    <th class="px-4 py-3 font-semibold text-right">Cant.</th>
-                  </tr>
-                </thead>
-                <tbody class="divide-y divide-slate-800/50">
-                  ${item.movimientos.map(m => `
-                    <tr class="hover:bg-slate-800/30">
-                      <td class="px-4 py-3 text-slate-400">${m.fecha}</td> <td class="px-4 py-3 text-slate-300 font-mono">${m.comprobante}</td>
-                      <td class="px-4 py-3 text-slate-400">${m.circuito}</td>
-                      <td class="px-4 py-3 text-right font-bold ${m.cantidad < 0 ? 'text-red-400' : 'text-emerald-400'}">
-                        ${m.cantidad > 0 ? '+' : ''}${m.cantidad}
-                      </td>
-                    </tr>
-                  `).join('')}
-                </tbody>
-              </table>
+      const detailRow = document.createElement('tr');
+      detailRow.id = `detail-${safeId}`;
+      detailRow.className = "hidden bg-slate-900/30 shadow-inner";
+      detailRow.innerHTML = `
+        <td colspan="4" class="px-6 py-6">
+          <div id="content-${safeId}" class="expanded-detail overflow-hidden border border-slate-800 rounded-xl bg-slate-950/50">
+            <div class="p-8 text-center text-slate-500">
+               <div class="loader ease-linear rounded-full border-2 border-t-2 border-slate-700 h-6 w-6 mx-auto mb-2"></div>
+               Cargando movimientos...
             </div>
-          </td>
-        `;
-        body.appendChild(detailRow);
-      });
+          </div>
+        </td>
+      `;
+      body.appendChild(detailRow);
+    });
+  }
+
+  async function toggleDetail(safeId, codigoReal) {
+    const detailRow = document.getElementById(`detail-${safeId}`);
+    const contentBox = document.getElementById(`content-${safeId}`);
+    const icon = document.getElementById(`icon-${safeId}`);
+
+    const isOpening = detailRow.classList.contains('hidden');
+    
+    // Toggle visual
+    detailRow.classList.toggle('hidden');
+    icon.style.transform = isOpening ? "rotate(180deg)" : "rotate(0deg)";
+
+    // Si estamos abriendo y el contenido tiene el placeholder de carga, pedimos los datos
+    if (isOpening && contentBox.dataset.loaded !== "true") {
+      try {
+        const response = await fetch(`${WEB_APP_URL}?codigo=${encodeURIComponent(codigoReal)}`);
+        const movimientos = await response.json();
+        
+        renderHistory(contentBox, movimientos);
+        contentBox.dataset.loaded = "true"; // Marcamos como cargado
+      } catch (err) {
+        contentBox.innerHTML = `<p class="p-4 text-red-400 text-center">Error al cargar movimientos</p>`;
+      }
+    }
+  }
+
+  function renderHistory(container, movs) {
+    if (!movs || movs.length === 0) {
+      container.innerHTML = `<p class="p-4 text-slate-500 text-center text-xs italic">Sin movimientos registrados recientemente.</p>`;
+      return;
     }
 
-    function toggleDetail(index) {
-      const detail = document.getElementById(`detail-${index}`);
-      detail.classList.toggle('hidden');
-    }
+    const tableHtml = `
+      <div class="p-4 border-b border-slate-800 bg-slate-900/50 flex justify-between items-center">
+        <h4 class="text-xs font-bold uppercase text-slate-500 tracking-widest">Historial Reciente</h4>
+      </div>
+      <table class="min-w-full text-xs">
+        <thead class="text-slate-500 bg-slate-900/20">
+          <tr>
+            <th class="px-4 py-3 text-left font-semibold">Fecha</th>
+            <th class="px-4 py-3 text-left font-semibold">Comprobante</th>
+            <th class="px-4 py-3 text-left font-semibold">Circuito</th>
+            <th class="px-4 py-3 text-right font-semibold">Cant.</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-800/50">
+          ${movs.map(m => `
+            <tr class="hover:bg-slate-800/30 transition-colors">
+              <td class="px-4 py-3 text-slate-400">${m.fecha}</td>
+              <td class="px-4 py-3 text-slate-300 font-mono">${m.comprobante || '-'}</td>
+              <td class="px-4 py-3 text-slate-400 text-xxs">${m.circuito || '-'}</td>
+              <td class="px-4 py-3 text-right font-bold ${m.cantidad < 0 ? 'text-red-400' : 'text-emerald-400'}">
+                ${m.cantidad > 0 ? '+' : ''}${m.cantidad}
+              </td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
+    `;
+    container.innerHTML = tableHtml;
+  }
 
-    function filterData() {
-      const term = document.getElementById('searchInput').value.toLowerCase();
-      const filtered = rawData.filter(item => 
-        item.codigo.toLowerCase().includes(term) || 
-        item.descripcion.toLowerCase().includes(term)
-      );
-      renderTable(filtered);
-    }
-  </script>
+  function filterData() {
+    const term = document.getElementById('searchInput').value.toLowerCase();
+    const filtered = rawData.filter(item => 
+      item.codigo.toLowerCase().includes(term) || 
+      item.descripcion.toLowerCase().includes(term)
+    );
+    renderTable(filtered);
+  }
+</script>
 </body>
 </html>
