@@ -32,7 +32,7 @@
           <h1 class="text-3xl font-extrabold tracking-tight text-white">
             <span class="text-cyan-500">📦</span> Sierra Corte
           </h1>
-          <p class="text-slate-400 text-sm mt-1">Control de Stock e Inventario Real</p>
+          <p class="text-slate-400 text-sm mt-1">Control de Stock en tiempo Real</p>
         </div>
         
         <div class="flex flex-1 max-w-xl gap-3">
@@ -77,7 +77,7 @@
 
   <script>
     // (Debe terminar en /exec)
-    const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbyclWnh6Dpoc75bZe134Blrc92x2lLTGJjMRGkWrdW36-ZlNb3t6BHoyE4tS49rXA/exec";
+    const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbzyZ09zV7YdLgv7In3-WAgrB10uQmtGuXr3TkGnxUEsQsdph3dhP74kc-khqGRerYU/exec";
     
     let rawData = [];
 
@@ -123,7 +123,7 @@
           <td class="px-6 py-5 whitespace-nowrap font-mono text-sm text-cyan-400">${item.codigo}</td>
           <td class="px-6 py-5 text-sm text-slate-300 font-medium">${item.descripcion}</td>
           <td class="px-6 py-5 whitespace-nowrap text-right font-bold text-xl text-white">
-            ${item.stock} <span class="text-xs text-slate-500 ml-1 font-normal">un</span>
+            ${item.stock} <span class="text-xs text-slate-500 ml-1 font-normal">m</span>
           </td>
           <td class="px-6 py-5 text-center">
             <span class="text-slate-500 group-hover:text-cyan-400 transition">
@@ -155,8 +155,7 @@
                 <tbody class="divide-y divide-slate-800/50">
                   ${item.movimientos.map(m => `
                     <tr class="hover:bg-slate-800/30">
-                      <td class="px-4 py-3 text-slate-400">${m.fecha}</td>
-                      <td class="px-4 py-3 text-slate-300 font-mono">${m.comprobante}</td>
+                      <td class="px-4 py-3 text-slate-400">${m.fecha}</td> <td class="px-4 py-3 text-slate-300 font-mono">${m.comprobante}</td>
                       <td class="px-4 py-3 text-slate-400">${m.circuito}</td>
                       <td class="px-4 py-3 text-right font-bold ${m.cantidad < 0 ? 'text-red-400' : 'text-emerald-400'}">
                         ${m.cantidad > 0 ? '+' : ''}${m.cantidad}
