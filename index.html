@@ -18,7 +18,6 @@
     .custom-scroll::-webkit-scrollbar { width: 6px; }
     .custom-scroll::-webkit-scrollbar-track { background: transparent; }
     .custom-scroll::-webkit-scrollbar-thumb { background: #334155; border-radius: 10px; }
-    .row-transition { transition: all 0.2s ease; }
     .expanded-detail { animation: slideDown 0.3s ease-out forwards; }
     @keyframes slideDown { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
   </style>
@@ -30,16 +29,16 @@
       <div class="flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div>
           <h1 class="text-3xl font-extrabold tracking-tight text-white">
-            <span class="text-cyan-500"></span> Sierra Corte
+            Sierra Corte
           </h1>
-          <p class="text-slate-400 text-sm mt-1">Control de Stock en tiempo Real</p>
+          <p class="text-slate-400 text-sm mt-1">Control de Stock en Tiempo Real</p>
         </div>
         
         <div class="flex flex-1 max-w-xl gap-3">
           <div class="relative flex-1">
             <input type="text" id="searchInput" onkeyup="filterData()" 
                    placeholder="Filtrar por código o descripción..." 
-                   class="w-full bg-slate-800 border-none rounded-xl py-3 pl-4 pr-10 text-slate-200 focus:ring-2 focus:ring-cyan-500 transition outline-none shadow-inner">
+                   class="w-full bg-slate-100 border-none rounded-xl py-3 px-4 text-slate-900 focus:ring-2 focus:ring-cyan-500 transition outline-none shadow-inner font-medium">
           </div>
           <button onclick="loadData()" class="bg-cyan-600 hover:bg-cyan-500 text-white font-bold px-6 py-3 rounded-xl transition shadow-lg active:scale-95">
             Actualizar
@@ -59,8 +58,7 @@
               <th class="px-6 py-4 text-xs font-semibold text-slate-400 uppercase tracking-wider text-center">Detalle</th>
             </tr>
           </thead>
-          <tbody id="tableBody" class="divide-y divide-slate-800">
-            </tbody>
+          <tbody id="tableBody" class="divide-y divide-slate-800"></tbody>
         </table>
       </div>
       
@@ -76,153 +74,155 @@
   </div>
 
   <script>
-  const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbzjmNtAKjjM8Azok_mWVM82x2WYv4pHhR65CV-dYh4ZgOuufATIqgHS_rt-QQpIq7g/exec";
-  let rawData = [];
+    const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbzjmNtAKjjM8Azok_mWVM82x2WYv4pHhR65CV-dYh4ZgOuufATIqgHS_rt-QQpIq7g/exec"; 
+    let rawData = [];
 
-  window.onload = loadData;
+    window.onload = loadData;
 
-  async function loadData() {
-    const loader = document.getElementById('loader');
-    const tableBody = document.getElementById('tableBody');
-    const emptyState = document.getElementById('emptyState');
-    
-    loader.classList.remove('hidden');
-    tableBody.innerHTML = '';
-    emptyState.classList.add('hidden');
-
-    try {
-      const response = await fetch(WEB_APP_URL);
-      const data = await response.json();
+    async function loadData() {
+      const loader = document.getElementById('loader');
+      const tableBody = document.getElementById('tableBody');
+      const emptyState = document.getElementById('emptyState');
       
-      if (data.error) throw new Error(data.error);
-      
-      rawData = data;
-      renderTable(data);
-    } catch (err) {
-      console.error(err);
-      alert("Error de conexión con la base de datos");
-    } finally {
-      loader.classList.add('hidden');
-    }
-  }
+      loader.classList.remove('hidden');
+      tableBody.innerHTML = '';
+      emptyState.classList.add('hidden');
 
-  function renderTable(data) {
-    const body = document.getElementById('tableBody');
-    body.innerHTML = ""; // Limpiamos antes de renderizar
-
-    if (data.length === 0) {
-      document.getElementById('emptyState').classList.remove('hidden');
-      return;
-    }
-
-    data.forEach((item) => {
-      // Usamos el código como ID único para evitar problemas al filtrar
-      const safeId = item.codigo.replace(/[^a-zA-Z0-9]/g, '_'); 
-      
-      const row = document.createElement('tr');
-      row.className = "hover:bg-slate-800/50 transition-colors cursor-pointer group";
-      row.onclick = () => toggleDetail(safeId, item.codigo);
-      
-      row.innerHTML = `
-        <td class="px-6 py-5 whitespace-nowrap font-mono text-sm text-cyan-400">${item.codigo}</td>
-        <td class="px-6 py-5 text-sm text-slate-300 font-medium">${item.descripcion}</td>
-        <td class="px-6 py-5 whitespace-nowrap text-right font-bold text-xl text-white">
-          ${item.stock} <span class="text-xs text-slate-500 ml-1 font-normal">u</span>
-        </td>
-        <td class="px-6 py-5 text-center">
-          <span class="text-slate-500 group-hover:text-cyan-400 transition" id="icon-${safeId}">
-            <svg class="w-6 h-6 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
-          </span>
-        </td>
-      `;
-      body.appendChild(row);
-
-      const detailRow = document.createElement('tr');
-      detailRow.id = `detail-${safeId}`;
-      detailRow.className = "hidden bg-slate-900/30 shadow-inner";
-      detailRow.innerHTML = `
-        <td colspan="4" class="px-6 py-6">
-          <div id="content-${safeId}" class="expanded-detail overflow-hidden border border-slate-800 rounded-xl bg-slate-950/50">
-            <div class="p-8 text-center text-slate-500">
-               <div class="loader ease-linear rounded-full border-2 border-t-2 border-slate-700 h-6 w-6 mx-auto mb-2"></div>
-               Cargando movimientos...
-            </div>
-          </div>
-        </td>
-      `;
-      body.appendChild(detailRow);
-    });
-  }
-
-  async function toggleDetail(safeId, codigoReal) {
-    const detailRow = document.getElementById(`detail-${safeId}`);
-    const contentBox = document.getElementById(`content-${safeId}`);
-    const icon = document.getElementById(`icon-${safeId}`);
-
-    const isOpening = detailRow.classList.contains('hidden');
-    
-    // Toggle visual
-    detailRow.classList.toggle('hidden');
-    icon.style.transform = isOpening ? "rotate(180deg)" : "rotate(0deg)";
-
-    // Si estamos abriendo y el contenido tiene el placeholder de carga, pedimos los datos
-    if (isOpening && contentBox.dataset.loaded !== "true") {
       try {
-        const response = await fetch(`${WEB_APP_URL}?codigo=${encodeURIComponent(codigoReal)}`);
-        const movimientos = await response.json();
+        const response = await fetch(WEB_APP_URL);
+        const data = await response.json();
+        if (data.error) throw new Error(data.error);
         
-        renderHistory(contentBox, movimientos);
-        contentBox.dataset.loaded = "true"; // Marcamos como cargado
+        rawData = data;
+        renderTable(data);
       } catch (err) {
-        contentBox.innerHTML = `<p class="p-4 text-red-400 text-center">Error al cargar movimientos</p>`;
+        console.error(err);
+        alert("Error de conexión");
+      } finally {
+        loader.classList.add('hidden');
       }
     }
-  }
 
-  function renderHistory(container, movs) {
-    if (!movs || movs.length === 0) {
-      container.innerHTML = `<p class="p-4 text-slate-500 text-center text-xs italic">Sin movimientos registrados recientemente.</p>`;
-      return;
+    function renderTable(data) {
+      const body = document.getElementById('tableBody');
+      const emptyState = document.getElementById('emptyState');
+      body.innerHTML = "";
+
+      if (data.length === 0) {
+        emptyState.classList.remove('hidden');
+        return;
+      } else {
+        emptyState.classList.add('hidden'); 
+      }
+
+      data.forEach((item) => {
+        const safeId = item.codigo.toString().replace(/[^a-zA-Z0-9]/g, '_');
+        
+        const row = document.createElement('tr');
+        row.className = "hover:bg-slate-800/50 transition-colors cursor-pointer group";
+        row.onclick = () => toggleDetail(safeId, item.codigo);
+        
+        row.innerHTML = `
+          <td class="px-6 py-5 font-mono text-sm text-cyan-400">${item.codigo}</td>
+          <td class="px-6 py-5 text-sm text-slate-300 font-medium">${item.descripcion}</td>
+          <td class="px-6 py-5 text-right font-bold text-xl text-white">
+            ${item.stock} <span class="text-xs text-slate-500 ml-1 font-normal">u</span>
+          </td>
+          <td class="px-6 py-5 text-center">
+            <span class="text-slate-500 group-hover:text-cyan-400 transition inline-block" id="icon-${safeId}">
+              <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+            </span>
+          </td>
+        `;
+        body.appendChild(row);
+
+        const detailRow = document.createElement('tr');
+        detailRow.id = `detail-${safeId}`;
+        detailRow.className = "hidden bg-slate-900/30 shadow-inner";
+        detailRow.innerHTML = `
+          <td colspan="4" class="px-6 py-6">
+            <div id="content-${safeId}" class="expanded-detail border border-slate-800 rounded-xl bg-slate-950/50 overflow-hidden">
+              <div class="p-8 text-center text-slate-500">
+                 <div class="loader ease-linear rounded-full border-2 border-t-2 border-slate-700 h-6 w-6 mx-auto mb-2"></div>
+                 Cargando historial...
+              </div>
+            </div>
+          </td>
+        `;
+        body.appendChild(detailRow);
+      });
     }
 
-    const tableHtml = `
-      <div class="p-4 border-b border-slate-800 bg-slate-900/50 flex justify-between items-center">
-        <h4 class="text-xs font-bold uppercase text-slate-500 tracking-widest">Historial Reciente</h4>
-      </div>
-      <table class="min-w-full text-xs">
-        <thead class="text-slate-500 bg-slate-900/20">
-          <tr>
-            <th class="px-4 py-3 text-left font-semibold">Fecha</th>
-            <th class="px-4 py-3 text-left font-semibold">Comprobante</th>
-            <th class="px-4 py-3 text-left font-semibold">Circuito</th>
-            <th class="px-4 py-3 text-right font-semibold">Cant.</th>
-          </tr>
-        </thead>
-        <tbody class="divide-y divide-slate-800/50">
-          ${movs.map(m => `
-            <tr class="hover:bg-slate-800/30 transition-colors">
-              <td class="px-4 py-3 text-slate-400">${m.fecha}</td>
-              <td class="px-4 py-3 text-slate-300 font-mono">${m.comprobante || '-'}</td>
-              <td class="px-4 py-3 text-slate-400 text-xxs">${m.circuito || '-'}</td>
-              <td class="px-4 py-3 text-right font-bold ${m.cantidad < 0 ? 'text-red-400' : 'text-emerald-400'}">
-                ${m.cantidad > 0 ? '+' : ''}${m.cantidad}
-              </td>
-            </tr>
-          `).join('')}
-        </tbody>
-      </table>
-    `;
-    container.innerHTML = tableHtml;
-  }
+    async function toggleDetail(safeId, codigoReal) {
+      const detailRow = document.getElementById(`detail-${safeId}`);
+      const contentBox = document.getElementById(`content-${safeId}`);
+      const icon = document.getElementById(`icon-${safeId}`);
+      const isOpening = detailRow.classList.contains('hidden');
+      
+      detailRow.classList.toggle('hidden');
+      icon.style.transform = isOpening ? "rotate(180deg)" : "rotate(0deg)";
 
-  function filterData() {
-    const term = document.getElementById('searchInput').value.toLowerCase();
-    const filtered = rawData.filter(item => 
-      item.codigo.toLowerCase().includes(term) || 
-      item.descripcion.toLowerCase().includes(term)
-    );
-    renderTable(filtered);
-  }
-</script>
+      if (isOpening && contentBox.dataset.loaded !== "true") {
+        try {
+          const response = await fetch(`${WEB_APP_URL}?codigo=${encodeURIComponent(codigoReal)}`);
+          const movimientos = await response.json();
+          renderHistory(contentBox, movimientos);
+          contentBox.dataset.loaded = "true";
+        } catch (err) {
+          contentBox.innerHTML = `<p class="p-4 text-red-400 text-center">Error al cargar historial</p>`;
+        }
+      }
+    }
+
+    function renderHistory(container, movs) {
+      if (!movs || movs.length === 0) {
+        container.innerHTML = `<p class="p-4 text-slate-500 text-center italic">Sin movimientos registrados.</p>`;
+        return;
+      }
+
+      container.innerHTML = `
+        <table class="min-w-full text-xs">
+          <thead class="text-slate-500 bg-slate-900/50">
+            <tr>
+              <th class="px-4 py-3 text-left">Fecha</th>
+              <th class="px-4 py-3 text-left">Comprobante</th>
+              <th class="px-4 py-3 text-right">Cant.</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-slate-800/50">
+            ${movs.map(m => {
+              // FORMATEO DE FECHA dd/mm/yyyy
+              let fechaStr = m.fecha;
+              try {
+                const d = new Date(m.fecha);
+                if(!isNaN(d)) {
+                  fechaStr = d.toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' });
+                }
+              } catch(e) {}
+
+              return `
+                <tr class="hover:bg-slate-800/30">
+                  <td class="px-4 py-3 text-slate-400">${fechaStr}</td>
+                  <td class="px-4 py-3 text-slate-300 font-mono">${m.comprobante || '-'}</td>
+                  <td class="px-4 py-3 text-right font-bold ${m.cantidad < 0 ? 'text-red-400' : 'text-emerald-400'}">
+                    ${m.cantidad > 0 ? '+' : ''}${m.cantidad}
+                  </td>
+                </tr>
+              `;
+            }).join('')}
+          </tbody>
+        </table>
+      `;
+    }
+
+    function filterData() {
+      const term = document.getElementById('searchInput').value.toLowerCase();
+      const filtered = rawData.filter(item => 
+        item.codigo.toString().toLowerCase().includes(term) || 
+        item.descripcion.toLowerCase().includes(term)
+      );
+      renderTable(filtered);
+    }
+  </script>
 </body>
 </html>
