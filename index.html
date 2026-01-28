@@ -49,7 +49,7 @@
       100% { transform: rotate(360deg); }
     }
     
-    /* Scrollbar personalizado */
+    /* Scrollbar */
     .custom-scroll::-webkit-scrollbar {
       width: 6px;
     }
@@ -150,7 +150,7 @@
       display: inline-block;
     }
     
-    /* Tabla estilizada */
+    /* Tabla */
     .premium-table th {
       font-weight: 600;
       letter-spacing: 0.05em;
@@ -169,7 +169,7 @@
 <body class="p-4 md:p-8 custom-scroll">
 
   <div class="max-w-6xl mx-auto">
-    <!-- Header con diseño premium -->
+    <!-- Header -->
     <div class="glass rounded-2xl p-6 mb-8 hover-glow">
       <div class="flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div>
@@ -239,7 +239,7 @@
       </div>
     </div>
     
-    <!-- Footer minimalista -->
+    <!-- Footer -->
     <div class="mt-8 text-center text-gray-600 text-sm">
       <p>Dashboard Sierra Corte  • FSM • <span id="currentYear"></span></p>
     </div>
@@ -250,10 +250,8 @@
     let rawData = [];
     
     // Lista de excepciones para artículos que usan "unidades" en lugar de "metros"
-    // Se puede ampliar fácilmente agregando más códigos a este array
     const unidadesExcepciones = [
       "OG4500004",
-      // Agregar más códigos aquí según sea necesario:
       // "EJEMPLO001",
       // "EJEMPLO002"
     ];
@@ -292,7 +290,7 @@
         renderTable(data);
       } catch (err) {
         console.error(err);
-        // Mostrar notificación de error elegante
+        // Mostrar notificación de error
         showError("Error de conexión con el servidor");
       } finally {
         loader.classList.add('hidden');
@@ -466,7 +464,7 @@
               </thead>
               <tbody class="divide-y divide-gray-800/50">
                 ${movs.map(m => {
-                  // Formateo de fecha dd/mm/yyyy
+                  // Formateo de fecha
                   let fechaStr = m.fecha;
                   try {
                     const d = new Date(m.fecha);
