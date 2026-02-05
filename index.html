@@ -127,6 +127,32 @@
     .premium-btn:active {
       transform: translateY(0);
     }
+
+
+      /* Estilos para pestañas */
+    .tab-button {
+      transition: all 0.3s ease;
+      position: relative;
+    }
+
+    .tab-button.active {
+      color: white;
+    }
+
+    .tab-button:not(.active):hover {
+      color: #e5e5e5;
+      background-color: rgba(255, 255, 255, 0.05);  
+    }
+
+    .tab-button.active::after {
+      content: '';
+      position: absolute;
+      bottom: -2px;
+      left: 0;
+      width: 100%;
+      height: 2px;
+      background-color: var(--accent);
+    }
     
     /* Badge para valores de stock */
     .stock-badge {
@@ -170,6 +196,7 @@
 
   <div class="max-w-6xl mx-auto">
     <!-- Header -->
+
     <div class="glass rounded-2xl p-6 mb-8 hover-glow">
       <div class="flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div>
@@ -178,13 +205,29 @@
               <span></span>
            </div>
             <div>
-              <h1 class="text-3xl font-bold tracking-tight text-white">
+              <h1 id="depotTitle" class="text-3xl font-bold tracking-tight text-white">
                 Sierra Corte
               </h1>
               <div class="accent-line"></div>
             </div>
           </div>
           <p class="text-gray-400 text-sm mt-2 font-medium">• Control de Stock en Tiempo Real •</p>
+        </div>
+
+        <!-- Pestañas de depósitos -->
+        <div class="mb-6">
+          <div class="flex border-b border-gray-800">
+            <button id="tabSierraCorte" 
+              onclick="switchDepot('sierra')"
+              class="tab-button active text-lg font-semibold px-6 py-3 text-white border-b-2 border-red-500">
+              Sierra Corte
+            </button>
+            <button id="tabBoero" 
+              onclick="switchDepot('boero')"
+              class="tab-button text-lg font-semibold px-6 py-3 text-gray-500 hover:text-gray-300">
+              Depósito Boero
+            </button>
+          </div>
         </div>
         
         <div class="flex flex-1 max-w-xl gap-3">
@@ -246,15 +289,55 @@
   </div>
 
   <script>
-    const WEB_APP_URL = "https://script.google.com/macros/s/AKfycby0mlheCboanya1IQiBzwjrvkUGF4GkHgKDAp_BzNKOEZNmh86n_TbgxQq_UI9Jtrs/exec"; 
-    let rawData = [];
-    
-    // Lista de excepciones para artículos que usan "unidades" en lugar de "metros"
-    const unidadesExcepciones = [
-      "OG4500004",
-      // "EJEMPLO001",
-      // "EJEMPLO002"
-    ];
+
+    // Variables para múltiples depósitos
+  const DEPOT_CONFIG = {
+    sierra: {
+      name: "Sierra Corte",
+      url: "https://script.google.com/macros/s/AKfycby0mlheCboanya1IQiBzwjrvkUGF4GkHgKDAp_BzNKOEZNmh86n_TbgxQq_UI9Jtrs/exec",
+     unidadesExcepciones: ["OG4500004"]  // Ejemplo específico
+    },
+    boero: {
+      name: "Depósito Boero",
+     url: "https://script.google.com/macros/s/AKfycbxJTt782PFf6qDKGfUv3ry-hDhHTbv6fScSvq9MV6j21FMS8CRoZg-RQgApxv97aRg/exec",  // Reemplazar con la URL real
+      unidadesExcepciones: []  // Definir excepciones específicas de Boero
+    }
+  };
+
+  let currentDepot = 'sierra';
+  let rawData = [];
+
+    // Función para cambiar entre depósitos
+  function switchDepot(depotKey) {
+    // Actualizar UI de pestañas
+    document.getElementById('tabSierraCorte').classList.remove('active', 'text-white', 'border-red-500');
+    document.getElementById('tabSierraCorte').classList.add('text-gray-500');
+    document.getElementById('tabBoero').classList.remove('active', 'text-white', 'border-red-500');
+    document.getElementById('tabBoero').classList.add('text-gray-500');
+  
+    document.getElementById(`tab${depotKey === 'sierra' ? 'SierraCorte' : 'Boero'}`).classList.add('active', 'text-white', 'border-red-500');
+    document.getElementById(`tab${depotKey === 'sierra' ? 'SierraCorte' : 'Boero'}`).classList.remove('text-gray-500');
+  
+    // Actualizar título
+    document.getElementById('depotTitle').textContent = DEPOT_CONFIG[depotKey].name;
+  
+    // Cambiar depósito actual
+    currentDepot = depotKey;
+  
+    // Limpiar búsqueda
+    document.getElementById('searchInput').value = '';
+  
+    // Cargar datos del nuevo depósito
+   loadData();
+  }
+
+  // Modificar obtenerUnidadMedida para usar config del depósito
+  function obtenerUnidadMedida(codigo) {
+    const excepciones = DEPOT_CONFIG[currentDepot].unidadesExcepciones || [];
+    return excepciones.includes(codigo.toString()) ? "unidades" : "metros";
+  }
+
+
 
     // Función para determinar la unidad de medida según el código del artículo
     function obtenerUnidadMedida(codigo) {
@@ -270,28 +353,35 @@
     // Establecer año actual en el footer
     document.getElementById('currentYear').textContent = new Date().getFullYear();
 
-    window.onload = loadData;
+    window.onload = function() {
+      // Inicializar pestaña activa
+     switchDepot('sierra');
+    };
+
+
 
     async function loadData() {
       const loader = document.getElementById('loader');
       const tableBody = document.getElementById('tableBody');
       const emptyState = document.getElementById('emptyState');
-      
+  
       loader.classList.remove('hidden');
       tableBody.innerHTML = '';
       emptyState.classList.add('hidden');
 
       try {
-        const response = await fetch(WEB_APP_URL);
+      // Usar URL del depósito activo
+        const currentConfig = DEPOT_CONFIG[currentDepot];
+        const response = await fetch(currentConfig.url);
         const data = await response.json();
+    
         if (data.error) throw new Error(data.error);
-        
+    
         rawData = data;
         renderTable(data);
       } catch (err) {
         console.error(err);
-        // Mostrar notificación de error
-        showError("Error de conexión con el servidor");
+        showError(`Error de conexión con ${DEPOT_CONFIG[currentDepot].name}`);
       } finally {
         loader.classList.add('hidden');
       }
@@ -407,7 +497,8 @@
 
       if (isOpening && contentBox.dataset.loaded !== "true") {
         try {
-          const response = await fetch(`${WEB_APP_URL}?codigo=${encodeURIComponent(codigoReal)}`);
+          const currentConfig = DEPOT_CONFIG[currentDepot];
+          const response = await fetch(`${currentConfig.url}?codigo=${encodeURIComponent(codigoReal)}`);
           const movimientos = await response.json();
           renderHistory(contentBox, movimientos, codigoReal);
           contentBox.dataset.loaded = "true";
@@ -528,5 +619,3 @@
   </script>
 </body>
 </html>
-
-
