@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Sierra Corte | Dashboard</title>
+  <title>Test | Dashboard</title>
   <link href="https://cdnjs.cloudflare.com/ajax/libs/tailwindcss/2.2.19/tailwind.min.css" rel="stylesheet">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <style>
@@ -127,6 +127,22 @@
     .premium-btn:active {
       transform: translateY(0);
     }
+
+    /* Estilos para pestañas */
+    .tab-button {
+      transition: all 0.3s ease;
+      position: relative;
+    }
+
+    .tab-button.active {
+      color: white;
+      border-bottom: 2px solid var(--accent);
+    }
+
+    .tab-button:not(.active):hover {
+      color: #e5e5e5;
+      background-color: rgba(255, 255, 255, 0.05);
+    }
     
     /* Badge para valores de stock */
     .stock-badge {
@@ -176,9 +192,9 @@
           <div class="flex items-center space-x-3">
             <div>
               <span></span>
-           </div>
+            </div>
             <div>
-              <h1 class="text-3xl font-bold tracking-tight text-white">
+              <h1 id="depotTitle" class="text-3xl font-bold tracking-tight text-white">
                 Sierra Corte
               </h1>
               <div class="accent-line"></div>
@@ -202,6 +218,22 @@
             Actualizar
           </button>
         </div>
+      </div>
+    </div>
+
+    <!-- Pestañas de depósitos - MOVIDO AQUÍ -->
+    <div class="glass rounded-xl p-1 mb-6">
+      <div class="flex">
+        <button id="tabSierraCorte" 
+          onclick="switchDepot('sierra')"
+          class="tab-button active flex-1 text-center text-lg font-semibold px-6 py-3 text-white">
+          Sierra Corte
+        </button>
+        <button id="tabBoero" 
+          onclick="switchDepot('boero')"
+          class="tab-button flex-1 text-center text-lg font-semibold px-6 py-3 text-gray-500">
+          Depósito Boero
+        </button>
       </div>
     </div>
 
@@ -241,38 +273,83 @@
     
     <!-- Footer -->
     <div class="mt-8 text-center text-gray-600 text-sm">
-      <p>Dashboard Sierra Corte  • FSM • <span id="currentYear"></span></p>
+      <p>Dashboard <span id="footerDepotName">Sierra Corte</span> • FSM • <span id="currentYear"></span></p>
     </div>
   </div>
 
   <script>
-    const WEB_APP_URL = "https://script.google.com/macros/s/AKfycby0mlheCboanya1IQiBzwjrvkUGF4GkHgKDAp_BzNKOEZNmh86n_TbgxQq_UI9Jtrs/exec"; 
-    let rawData = [];
-    
-    // Lista de excepciones para artículos que usan "unidades" en lugar de "metros"
-    const unidadesExcepciones = [
-      "OG4500004",
-      // "EJEMPLO001",
-      // "EJEMPLO002"
-    ];
+    // Variables para múltiples depósitos
+    const DEPOT_CONFIG = {
+      sierra: {
+        name: "Sierra Corte",
+        url: "https://script.google.com/macros/s/AKfycby0mlheCboanya1IQiBzwjrvkUGF4GkHgKDAp_BzNKOEZNmh86n_TbgxQq_UI9Jtrs/exec",
+        unidadesExcepciones: ["OG4500004"]
+      },
+      boero: {
+        name: "Depósito Boero",
+        url: "https://script.google.com/macros/s/AKfycbxJTt782PFf6qDKGfUv3ry-hDhHTbv6fScSvq9MV6j21FMS8CRoZg-RQgApxv97aRg/exec",
+        unidadesExcepciones: []
+      }
+    };
 
-    // Función para determinar la unidad de medida según el código del artículo
+    let currentDepot = 'sierra';
+    let rawData = [];
+
+    // Función para cambiar entre depósitos
+    function switchDepot(depotKey) {
+      if (currentDepot === depotKey) return;
+      
+      // Actualizar estado activo
+      currentDepot = depotKey;
+      
+      // Actualizar UI de pestañas
+      document.querySelectorAll('.tab-button').forEach(tab => {
+        tab.classList.remove('active', 'text-white');
+        tab.classList.add('text-gray-500');
+      });
+      
+      const activeTab = document.getElementById(`tab${depotKey === 'sierra' ? 'SierraCorte' : 'Boero'}`);
+      activeTab.classList.add('active', 'text-white');
+      activeTab.classList.remove('text-gray-500');
+      
+      // Actualizar título
+      document.getElementById('depotTitle').textContent = DEPOT_CONFIG[depotKey].name;
+      document.getElementById('footerDepotName').textContent = DEPOT_CONFIG[depotKey].name;
+      
+      // Limpiar búsqueda
+      document.getElementById('searchInput').value = '';
+      
+      // Limpiar tabla
+      document.getElementById('tableBody').innerHTML = '';
+      document.getElementById('emptyState').classList.add('hidden');
+      
+      // Cargar datos del nuevo depósito
+      loadData();
+    }
+
+    // Función para determinar la unidad de medida
     function obtenerUnidadMedida(codigo) {
-      // Verificar si el código está en la lista de excepciones
-      return unidadesExcepciones.includes(codigo.toString()) ? "unidades" : "metros";
+      const excepciones = DEPOT_CONFIG[currentDepot].unidadesExcepciones || [];
+      return excepciones.includes(codigo.toString()) ? "unidades" : "metros";
     }
     
-    // Función para obtener la clase CSS del badge según la unidad
+    // Función para obtener la clase CSS del badge
     function obtenerClaseBadge(unidad) {
       return unidad === "unidades" ? "units-badge" : "stock-badge";
     }
 
-    // Establecer año actual en el footer
+    // Establecer año actual
     document.getElementById('currentYear').textContent = new Date().getFullYear();
 
-    window.onload = loadData;
+    // Inicializar al cargar
+    window.onload = function() {
+      // Cargar datos iniciales
+      loadData();
+    };
 
     async function loadData() {
+      console.log(`Cargando datos de: ${DEPOT_CONFIG[currentDepot].name}`);
+      
       const loader = document.getElementById('loader');
       const tableBody = document.getElementById('tableBody');
       const emptyState = document.getElementById('emptyState');
@@ -282,25 +359,40 @@
       emptyState.classList.add('hidden');
 
       try {
-        const response = await fetch(WEB_APP_URL);
-        const data = await response.json();
-        if (data.error) throw new Error(data.error);
+        const currentConfig = DEPOT_CONFIG[currentDepot];
+        console.log(`URL: ${currentConfig.url}`);
         
-        rawData = data;
-        renderTable(data);
+        // Agregar timestamp para evitar caché
+        const url = `${currentConfig.url}?t=${Date.now()}`;
+        const response = await fetch(url, {
+          mode: 'cors'
+        });
+        
+        if (!response.ok) {
+          throw new Error(`Error HTTP: ${response.status}`);
+        }
+        
+        const data = await response.json();
+        console.log('Datos recibidos:', data);
+        
+        if (data.error) {
+          throw new Error(data.error);
+        }
+        
+        rawData = Array.isArray(data) ? data : [];
+        renderTable(rawData);
       } catch (err) {
-        console.error(err);
-        // Mostrar notificación de error
-        showError("Error de conexión con el servidor");
+        console.error('Error detallado:', err);
+        showError(`Error de conexión con ${DEPOT_CONFIG[currentDepot].name}: ${err.message}`);
+        document.getElementById('emptyState').classList.remove('hidden');
       } finally {
         loader.classList.add('hidden');
       }
     }
 
     function showError(message) {
-      // Crear elemento de notificación
       const notification = document.createElement('div');
-      notification.className = 'fixed top-4 right-4 glass p-4 rounded-xl border-l-4 border-red-600 z-50 animate-slideIn';
+      notification.className = 'fixed top-4 right-4 glass p-4 rounded-xl border-l-4 border-red-600 z-50';
       notification.innerHTML = `
         <div class="flex items-center">
           <div class="rounded-full bg-red-900/20 p-2 mr-3">
@@ -317,15 +409,8 @@
       
       document.body.appendChild(notification);
       
-      // Remover después de 5 segundos
       setTimeout(() => {
-        notification.style.opacity = '0';
-        notification.style.transform = 'translateX(20px)';
-        setTimeout(() => {
-          if (notification.parentNode) {
-            notification.parentNode.removeChild(notification);
-          }
-        }, 300);
+        notification.remove();
       }, 5000);
     }
 
@@ -334,7 +419,7 @@
       const emptyState = document.getElementById('emptyState');
       body.innerHTML = "";
 
-      if (data.length === 0) {
+      if (!data || data.length === 0) {
         emptyState.classList.remove('hidden');
         return;
       } else {
@@ -357,7 +442,7 @@
                 ${item.codigo}
               </div>
               ${unidad === "unidades" ? 
-                '<span class="text-xs bg-blue-900/30 text-blue-400 px-2 py-1 rounded-full"></span>' : 
+                '<span class="text-xs bg-blue-900/30 text-blue-400 px-2 py-1 rounded-full">U</span>' : 
                 ''}
             </div>
           </td>
@@ -387,7 +472,6 @@
               <div class="p-8 text-center text-gray-500">
                  <div class="loader ease-linear rounded-full border-2 border-t-2 border-gray-700 h-6 w-6 mx-auto mb-2"></div>
                  <p class="text-sm font-medium">Cargando historial de movimientos...</p>
-                 <p class="text-xs mt-1"></p>
               </div>
             </div>
           </td>
@@ -407,7 +491,8 @@
 
       if (isOpening && contentBox.dataset.loaded !== "true") {
         try {
-          const response = await fetch(`${WEB_APP_URL}?codigo=${encodeURIComponent(codigoReal)}`);
+          const currentConfig = DEPOT_CONFIG[currentDepot];
+          const response = await fetch(`${currentConfig.url}?codigo=${encodeURIComponent(codigoReal)}&t=${Date.now()}`);
           const movimientos = await response.json();
           renderHistory(contentBox, movimientos, codigoReal);
           contentBox.dataset.loaded = "true";
@@ -421,7 +506,7 @@
                 </svg>
               </div>
               <p class="text-red-400 font-medium">Error al cargar el historial</p>
-              <p class="text-gray-500 text-sm mt-1">Intente nuevamente más tarde</p>
+              <p class="text-gray-500 text-sm mt-1">${err.message}</p>
             </div>`;
         }
       }
@@ -449,7 +534,7 @@
           <div class="flex items-center justify-between p-4 border-b border-gray-800">
             <div>
               <h3 class="text-lg font-semibold text-white">Historial de Movimientos</h3>
-              <p class="text-xs text-gray-500 mt-1"> <span class="text-gray-400 font-medium"></span></p>
+              <p class="text-xs text-gray-500 mt-1">Artículo: ${codigo}</p>
             </div>
             <span class="text-xs text-gray-500 bg-black/40 px-3 py-1 rounded-full">${movs.length} registros</span>
           </div>
@@ -464,7 +549,6 @@
               </thead>
               <tbody class="divide-y divide-gray-800/50">
                 ${movs.map(m => {
-                  // Formateo de fecha
                   let fechaStr = m.fecha;
                   try {
                     const d = new Date(m.fecha);
@@ -506,27 +590,6 @@
       );
       renderTable(filtered);
     }
-    
-    // Añadir animación de entrada para las notificaciones
-    const style = document.createElement('style');
-    style.textContent = `
-      @keyframes slideIn {
-        from {
-          opacity: 0;
-          transform: translateX(100%);
-        }
-        to {
-          opacity: 1;
-          transform: translateX(0);
-        }
-      }
-      .animate-slideIn {
-        animation: slideIn 0.3s ease-out forwards;
-      }
-    `;
-    document.head.appendChild(style);
   </script>
 </body>
 </html>
-
-
