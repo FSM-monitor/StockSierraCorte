@@ -278,91 +278,20 @@
     </div>
   </div>
 
+  <script src="excepciones.js"></script>
+
   <script>
     // Variables para múltiples depósitos
     const DEPOT_CONFIG = {
       sierra: {
         name: "Sierra Corte",
         url: "https://script.google.com/macros/s/AKfycby0mlheCboanya1IQiBzwjrvkUGF4GkHgKDAp_BzNKOEZNmh86n_TbgxQq_UI9Jtrs/exec",
-        unidadesExcepciones: ["OG4500004"]
+        unidadesExcepciones: EXCEPCIONES_POR_DEPOSITO.sierra || []
       },
       boero: {
         name: "Depósito Boero",
         url: "https://script.google.com/macros/s/AKfycbx_24kSglUEfSum16-E0D40LMY_SAKIfjqP10UgbsKYBHPqGiMDpzYni9eBe6ENaHnd8A/exec",
-        unidadesExcepciones: [
-                              "BA0100054",
-                              "BA0200001",
-                              "BA0200004",
-                              "CS0100184",
-                              "CS0100185",
-                              "MB03145B00",
-                              "MB03155A00",
-                              "MB03156A00",
-                              "MB03156A01",
-                              "MM07116A00",
-                              "MY03155A00",
-                              "OD1040017",
-                              "OG4500001",
-                              "OG4500005",
-                              "PB0630016",
-                              "PB0630017",
-                              "PB0630018",
-                              "PB0730003",
-                              "PC0510001",
-                              "PC0810001",
-                              "PC0810002",
-                              "PC1000008",
-                              "PC1000009",
-                              "PC1000010",
-                              "PC1000023",
-                              "PC1000024",
-                              "PC1130022",
-                              "PC1210008",
-                              "PC1210031",
-                              "PC1210034",
-                              "PC1210039",
-                              "PC1220004",
-                              "PC1220008",
-                              "PC1220013",
-                              "PC1410068",
-                              "PC1410071",
-                              "PC1410107",
-                              "PC1410138",
-                              "PC1410155",
-                              "PC1410156",
-                              "PC1410350",
-                              "PC1410351",
-                              "PC1410352",
-                              "PC1410353",
-                              "PC1410354",
-                              "PC1410403",
-                              "PC1410404",
-                              "PC1410405",
-                              "PC1410406",
-                              "PC1410407",
-                              "PC1410408",
-                              "PC1440001",
-                              "PC1440009",
-                              "PE0410018",
-                              "PE0410040",
-                              "PE0710038",
-                              "PE0710043",
-                              "PE0710044",
-                              "PE0810061",
-                              "PE0820019",
-                              "PE0820027",
-                              "PE0820030",
-                              "PE0900015",
-                              "PE0900016",
-                              "PE0900016E",
-                              "PE0900019",
-                              "PE0900028",
-                              "PE0900032",
-                              "PE1011272",
-                              "PE1012242",
-                              "PE1014227",
-                              "PE1014228"
-                            ]
+        unidadesExcepciones: EXCEPCIONES_POR_DEPOSITO.boero || []
       }
     };
 
@@ -666,4 +595,5 @@
     }
   </script>
 </body>
+
 </html>
