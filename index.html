@@ -681,8 +681,6 @@
 
     // 2) Fetch a la API
     const url = `${currentConfig.url}?t=${Date.now()}`;
-    console.log('🔍 URL de la API (copia y prueba en el navegador):', url); // <-- LOG AÑADIDO
-
     const response = await fetch(url, { mode: 'cors' });
 
     if (!response.ok) {
