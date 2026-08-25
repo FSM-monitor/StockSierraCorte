@@ -1,15 +1,15 @@
-// ============================================================
 // config.js - Configuración del Dashboard de Stock
-// ============================================================
-
-// URLs de las APIs para cada depósito
 window.API_URLS = {
   sierra: 'https://script.google.com/macros/s/AKfycby0mlheCboanya1IQiBzwjrvkUGF4GkHgKDAp_BzNKOEZNmh86n_TbgxQq_UI9Jtrs/exec',
   boero: 'https://script.google.com/macros/s/AKfycbxRn_ZnquPLHnnmZuoPMcYiA9xuuX6akJrdVjGvVWroXjwdZbkfXg4dPHnzz-MLlIVWWg/exec'
 };
 
-// Excepciones: códigos de artículos que se miden en "unidades" en lugar de "metros"
-// Agrupa por depósito (sierra / boero)
+// Excepciones: códigos que se miden en "unidades" (si no hay, dejar arreglos vacíos)
+window.EXCEPCIONES_POR_DEPOSITO = {
+  sierra: [],
+  boero: []
+};
+
 window.EXCEPCIONES_POR_DEPOSITO = {
   sierra: [
     "OG4500004"
