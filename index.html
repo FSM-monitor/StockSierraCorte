@@ -683,98 +683,94 @@
     // ============================================================
     // 12. Función principal loadData (con caché, cooldown y manejo de errores)
     // ============================================================
-    async function loadData(forceRefresh = false) {
-        // Si ya hay una solicitud en curso o el botón está en cooldown, ignorar
-        if (isLoading || isCooldown) return;
+	async function loadData(forceRefresh = false) {
+    if (isLoading || isCooldown) return;
 
-        const loader = document.getElementById('loader');
-        const tableBody = document.getElementById('tableBody');
-        const emptyState = document.getElementById('emptyState');
+    const loader = document.getElementById('loader');
+    const tableBody = document.getElementById('tableBody');
+    const emptyState = document.getElementById('emptyState');
 
-        // Iniciar estado de carga
-        isLoading = true;
-        updateButtonState('loading');
+    isLoading = true;
+    updateButtonState('loading');
 
-        loader.classList.remove('hidden');
-        tableBody.innerHTML = '';
-        emptyState.classList.add('hidden');
+    loader.classList.remove('hidden');
+    tableBody.innerHTML = '';
+    emptyState.classList.add('hidden');
 
-        try {
-            const depotKey = currentDepot;
-            const currentConfig = DEPOT_CONFIG[depotKey];
+    try {
+        const depotKey = currentDepot;
+        const currentConfig = DEPOT_CONFIG[depotKey];
 
-            // 1. Intentar usar caché si no se fuerza refresco
-	    if (!forceRefresh) {
-    		const cachedData = getCache(depotKey);
-    		if (cachedData) {
-        	    rawData = cachedData;
-        	    renderTable(rawData);
-       		    isLoading = false;
-       		    updateButtonState('idle');
-      		    loader.classList.add('hidden'); // ✅ Agregar esta línea
-     		    return;
-   		 }
-	    }
-
-            // 2. No hay caché válida o se fuerza refresco → hacer fetch
-            const url = `${currentConfig.url}?t=${Date.now()}`;
-            const response = await fetch(url, { mode: 'cors' });
-
-            if (!response.ok) {
-                throw new Error(`Error HTTP: ${response.status}`);
-            }
-
-            const data = await response.json();
-            if (data.error) {
-                throw new Error(data.error);
-            }
-
-            // Datos válidos
-            const parsedData = Array.isArray(data) ? data : [];
-            rawData = parsedData;
-            renderTable(rawData);
-
-            // Guardar en caché
-            setCache(depotKey, parsedData);
-
-        } catch (err) {
-            console.error('Error en loadData:', err);
-
-            // 3. Falló la API → intentar usar caché aunque esté expirada
-            const expiredCache = getCache(currentDepot, true);
-            if (expiredCache) {
-                rawData = expiredCache;
+        if (!forceRefresh) {
+            const cachedData = getCache(depotKey);
+            if (cachedData) {
+                rawData = cachedData;
                 renderTable(rawData);
-                showWarning('Mostrando datos en caché (pueden estar desactualizados)');
-            } else {
-                // No hay caché → mostrar error y vacío
-                showError(`Error de conexión con ${DEPOT_CONFIG[currentDepot].name}: ${err.message}`);
-                document.getElementById('emptyState').classList.remove('hidden');
-            }
-        } finally {
-            // Ocultar loader
-            loader.classList.add('hidden');
-
-            // Finalizar estado de carga
-            isLoading = false;
-
-            // Iniciar cooldown de 10 segundos (siempre, incluso si hubo error)
-            if (cooldownTimer) {
-                clearTimeout(cooldownTimer);
-                cooldownTimer = null;
-            }
-
-            isCooldown = true;
-            updateButtonState('cooldown');
-
-            cooldownTimer = setTimeout(() => {
-                isCooldown = false;
+                isLoading = false;
                 updateButtonState('idle');
-                cooldownTimer = null;
-            }, COOLDOWN);
+                loader.classList.add('hidden'); // ← Corrección 1
+                return;
+            }
         }
-    }
 
+        const url = `${currentConfig.url}?t=${Date.now()}`;
+        const response = await fetch(url, { mode: 'cors' });
+
+        if (!response.ok) {
+            throw new Error(`Error HTTP: ${response.status}`);
+        }
+
+        // Intentar parsear JSON, si falla, lanzar error con el contenido
+        let data;
+        try {
+            data = await response.json();
+        } catch (parseError) {
+            // Leer el texto de la respuesta para dar más información
+            const text = await response.text();
+            const snippet = text.substring(0, 200); // primeros 200 caracteres
+            throw new Error(`La API no devolvió JSON válido. Respuesta: ${snippet}...`);
+        }
+
+        if (data.error) {
+            throw new Error(data.error);
+        }
+
+        const parsedData = Array.isArray(data) ? data : [];
+        rawData = parsedData;
+        renderTable(rawData);
+        setCache(depotKey, parsedData);
+
+    } catch (err) {
+        console.error('Error en loadData:', err);
+
+        // Intentar usar caché expirada
+        const expiredCache = getCache(currentDepot, true);
+        if (expiredCache) {
+            rawData = expiredCache;
+            renderTable(rawData);
+            showWarning('Mostrando datos en caché (pueden estar desactualizados)');
+        } else {
+            showError(`Error: ${err.message}`);
+            document.getElementById('emptyState').classList.remove('hidden');
+        }
+    } finally {
+        loader.classList.add('hidden');
+        isLoading = false;
+
+        // Cooldown de 10 segundos
+        if (cooldownTimer) {
+            clearTimeout(cooldownTimer);
+            cooldownTimer = null;
+        }
+        isCooldown = true;
+        updateButtonState('cooldown');
+        cooldownTimer = setTimeout(() => {
+            isCooldown = false;
+            updateButtonState('idle');
+            cooldownTimer = null;
+        }, COOLDOWN);
+    }
+}
     // ============================================================
     // 13. Inicialización
     // ============================================================
