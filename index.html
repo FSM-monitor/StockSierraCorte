@@ -279,6 +279,7 @@
   </div>
 
 <script src="config.js"></script>
+<script src="config.js"></script>
 <script>
   // ============================================================
   // 1. Validar configuración
@@ -301,7 +302,7 @@
   // ============================================================
   // 2. Constantes
   // ============================================================
-  const TTL = 5 * 60 * 1000;               // 5 minutos
+  const TTL = 10 * 60 * 1000;              // 10 minutos (más tiempo para mejor experiencia)
   const COOLDOWN = 10 * 1000;              // 10 segundos
   const CACHE_KEY_PREFIX = 'stockCache_';
 
@@ -330,6 +331,7 @@
   let isCooldown = false;
   let cooldownTimer = null;
   let refreshBtn = null;
+  let cachedIndicator = null; // para mostrar mensaje de caché
 
   // ============================================================
   // 5. Caché (localStorage)
@@ -438,7 +440,7 @@
   // ============================================================
   // 9. Renderizado (tabla, detalles, historial)
   // ============================================================
-  function renderTable(data) {
+  function renderTable(data, fromCache = false) {
     const body = document.getElementById('tableBody');
     const emptyState = document.getElementById('emptyState');
     body.innerHTML = '';
@@ -448,6 +450,13 @@
       return;
     }
     emptyState.classList.add('hidden');
+
+    // Indicador de caché (opcional)
+    if (fromCache && cachedIndicator) {
+      cachedIndicator.textContent = '📦 Datos en caché';
+      cachedIndicator.style.display = 'inline-block';
+      setTimeout(() => { if (cachedIndicator) cachedIndicator.style.display = 'none'; }, 3000);
+    }
 
     data.forEach((item) => {
       const safeId = item.codigo.toString().replace(/[^a-zA-Z0-9]/g, '_');
@@ -616,18 +625,19 @@
       item.codigo.toString().toLowerCase().includes(term) ||
       item.descripcion.toLowerCase().includes(term)
     );
-    renderTable(filtered);
+    renderTable(filtered, false);
   }
 
   window.filterData = debounce(performFilter, 300);
 
   // ============================================================
-  // 11. Cambio de depósito
+  // 11. Cambio de depósito (optimizado con caché)
   // ============================================================
   function switchDepot(depotKey) {
     if (currentDepot === depotKey) return;
     currentDepot = depotKey;
 
+    // Actualizar UI de pestañas
     document.querySelectorAll('.tab-button').forEach(tab => {
       tab.classList.remove('active', 'text-white');
       tab.classList.add('text-gray-500');
@@ -636,104 +646,131 @@
     activeTab.classList.add('active', 'text-white');
     activeTab.classList.remove('text-gray-500');
 
+    // Actualizar títulos
     document.getElementById('depotTitle').textContent = DEPOT_CONFIG[depotKey].name;
     document.getElementById('footerDepotName').textContent = DEPOT_CONFIG[depotKey].name;
 
+    // Limpiar búsqueda
     document.getElementById('searchInput').value = '';
-    document.getElementById('tableBody').innerHTML = '';
-    document.getElementById('emptyState').classList.add('hidden');
 
-    loadData(false);
+    // Intentar mostrar caché inmediatamente (sin loader, sin vaciar la tabla)
+    const cached = getCache(depotKey);
+    if (cached) {
+      rawData = cached;
+      renderTable(rawData, true); // true = mostrar indicador de caché
+      // Cargar en segundo plano para actualizar la caché (sin bloquear)
+      loadData(false, true); // segundo parámetro: silencioso (no muestra loader)
+    } else {
+      // No hay caché, mostrar loader y cargar
+      loadData(false);
+    }
   }
 
   // ============================================================
-  // 12. Función principal loadData (con caché, cooldown, manejo de errores)
+  // 12. Función principal loadData (con opción silenciosa)
   // ============================================================
-  async function loadData(forceRefresh = false) {
-  if (isLoading || isCooldown) return;
+  async function loadData(forceRefresh = false, silent = false) {
+    if (isLoading || isCooldown) return;
 
-  const loader = document.getElementById('loader');
-  const tableBody = document.getElementById('tableBody');
-  const emptyState = document.getElementById('emptyState');
+    const loader = document.getElementById('loader');
+    const tableBody = document.getElementById('tableBody');
+    const emptyState = document.getElementById('emptyState');
 
-  isLoading = true;
-  updateButtonState('loading');
-  loader.classList.remove('hidden');
-  tableBody.innerHTML = '';
-  emptyState.classList.add('hidden');
+    // Si no es silencioso, mostrar loader y limpiar tabla
+    if (!silent) {
+      isLoading = true;
+      updateButtonState('loading');
+      loader.classList.remove('hidden');
+      tableBody.innerHTML = '';
+      emptyState.classList.add('hidden');
+    }
 
-  try {
-    const depotKey = currentDepot;
-    const currentConfig = DEPOT_CONFIG[depotKey];
+    try {
+      const depotKey = currentDepot;
+      const currentConfig = DEPOT_CONFIG[depotKey];
 
-    // 1) Intentar caché válida (si no se fuerza refresco)
-    if (!forceRefresh) {
-      const cached = getCache(depotKey);
-      if (cached) {
-        rawData = cached;
-        renderTable(rawData);
-        isLoading = false;
-        updateButtonState('idle');
-        loader.classList.add('hidden');
+      // 1) Intentar caché válida (si no se fuerza refresco)
+      if (!forceRefresh) {
+        const cached = getCache(depotKey);
+        if (cached) {
+          rawData = cached;
+          renderTable(rawData, !silent); // mostrar indicador solo si no es silencioso
+          if (!silent) {
+            isLoading = false;
+            updateButtonState('idle');
+            loader.classList.add('hidden');
+          }
+          return;
+        }
+      }
+
+      // Si es silencioso y no hay caché, salir (ya se mostrará el loader en la próxima interacción)
+      if (silent) {
         return;
       }
+
+      // 2) Fetch a la API
+      const url = `${currentConfig.url}?t=${Date.now()}`;
+      console.log('🔍 URL de la API:', url);
+
+      const response = await fetch(url, {
+        mode: 'cors',
+        headers: { 'Accept': 'application/json' }
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+
+      const text = await response.text();
+      let data;
+      try {
+        data = JSON.parse(text);
+      } catch (parseError) {
+        throw new Error(`La API no devolvió JSON. URL usada: ${url}`);
+      }
+
+      if (data && data.error) {
+        throw new Error(data.error);
+      }
+
+      const parsedData = Array.isArray(data) ? data : [];
+      rawData = parsedData;
+      renderTable(rawData, false);
+      setCache(depotKey, parsedData);
+
+    } catch (err) {
+      console.error('Error en loadData:', err);
+
+      if (!silent) {
+        // Intentar usar caché expirada
+        const expiredCache = getCache(currentDepot, true);
+        if (expiredCache) {
+          rawData = expiredCache;
+          renderTable(rawData, false);
+          showWarning('Mostrando datos en caché (pueden estar desactualizados)');
+        } else {
+          showError(`Error: ${err.message}`);
+          document.getElementById('emptyState').classList.remove('hidden');
+        }
+      }
+    } finally {
+      if (!silent) {
+        loader.classList.add('hidden');
+        isLoading = false;
+
+        // Iniciar cooldown (si no es silencioso)
+        if (cooldownTimer) clearTimeout(cooldownTimer);
+        isCooldown = true;
+        updateButtonState('cooldown');
+        cooldownTimer = setTimeout(() => {
+          isCooldown = false;
+          updateButtonState('idle');
+          cooldownTimer = null;
+        }, COOLDOWN);
+      }
     }
-
-    // 2) Fetch a la API
-    const url = `${currentConfig.url}?t=${Date.now()}`;
-    const response = await fetch(url, { mode: 'cors' });
-
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status}`);
-    }
-
-    // Leer el cuerpo como texto y luego parsear JSON
-    const text = await response.text();
-    let data;
-    try {
-      data = JSON.parse(text);
-    } catch (parseError) {
-      // Si no es JSON, mostramos un error sin el HTML completo
-      throw new Error(`La API no devolvió JSON. Verifica que la URL sea correcta y que el script esté publicado. URL usada: ${url}`);
-    }
-
-    if (data && data.error) {
-      throw new Error(data.error);
-    }
-
-    const parsedData = Array.isArray(data) ? data : [];
-    rawData = parsedData;
-    renderTable(rawData);
-    setCache(depotKey, parsedData);
-
-  } catch (err) {
-    console.error('Error en loadData:', err);
-
-    // 3) Falló la API → intentar usar caché expirada
-    const expiredCache = getCache(currentDepot, true);
-    if (expiredCache) {
-      rawData = expiredCache;
-      renderTable(rawData);
-      showWarning('Mostrando datos en caché (pueden estar desactualizados)');
-    } else {
-      showError(`Error: ${err.message}`);
-      document.getElementById('emptyState').classList.remove('hidden');
-    }
-  } finally {
-    loader.classList.add('hidden');
-    isLoading = false;
-
-    // Iniciar cooldown (siempre, incluso en error)
-    if (cooldownTimer) clearTimeout(cooldownTimer);
-    isCooldown = true;
-    updateButtonState('cooldown');
-    cooldownTimer = setTimeout(() => {
-      isCooldown = false;
-      updateButtonState('idle');
-      cooldownTimer = null;
-    }, COOLDOWN);
   }
-}
 
   // ============================================================
   // 13. Inicialización
@@ -745,19 +782,31 @@
       updateButtonState('idle');
     }
 
+    // Crear un pequeño indicador de caché (opcional)
+    const header = document.querySelector('.glass .flex');
+    if (header) {
+      const span = document.createElement('span');
+      span.id = 'cacheIndicator';
+      span.className = 'text-xs text-gray-500 ml-2';
+      span.style.display = 'none';
+      span.textContent = '📦 Datos en caché';
+      header.appendChild(span);
+      cachedIndicator = span;
+    }
+
     document.getElementById('currentYear').textContent = new Date().getFullYear();
 
     // Carga inicial (usa caché si es válida)
     loadData(false);
   });
 
-  // Exponer funciones globales para los onclick del HTML
+  // Exponer funciones globales
   window.switchDepot = switchDepot;
   window.loadData = loadData;
-  // filterData ya está expuesta
+  window.filterData = window.filterData;
   window.toggleDetail = toggleDetail;
-	
 </script>
+	
 </body>
 
 </html>
