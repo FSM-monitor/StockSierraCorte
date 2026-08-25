@@ -649,90 +649,92 @@
   // 12. Función principal loadData (con caché, cooldown, manejo de errores)
   // ============================================================
   async function loadData(forceRefresh = false) {
-    if (isLoading || isCooldown) return;
+  if (isLoading || isCooldown) return;
 
-    const loader = document.getElementById('loader');
-    const tableBody = document.getElementById('tableBody');
-    const emptyState = document.getElementById('emptyState');
+  const loader = document.getElementById('loader');
+  const tableBody = document.getElementById('tableBody');
+  const emptyState = document.getElementById('emptyState');
 
-    isLoading = true;
-    updateButtonState('loading');
-    loader.classList.remove('hidden');
-    tableBody.innerHTML = '';
-    emptyState.classList.add('hidden');
+  isLoading = true;
+  updateButtonState('loading');
+  loader.classList.remove('hidden');
+  tableBody.innerHTML = '';
+  emptyState.classList.add('hidden');
 
-    try {
-      const depotKey = currentDepot;
-      const currentConfig = DEPOT_CONFIG[depotKey];
+  try {
+    const depotKey = currentDepot;
+    const currentConfig = DEPOT_CONFIG[depotKey];
 
-      // 1) Intentar caché válida (si no se fuerza refresco)
-      if (!forceRefresh) {
-        const cached = getCache(depotKey);
-        if (cached) {
-          rawData = cached;
-          renderTable(rawData);
-          isLoading = false;
-          updateButtonState('idle');
-          loader.classList.add('hidden');
-          return;
-        }
-      }
-
-      // 2) Fetch a la API
-      const url = `${currentConfig.url}?t=${Date.now()}`;
-      const response = await fetch(url, { mode: 'cors' });
-
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}`);
-      }
-
-      // Leer el cuerpo como texto y luego parsear JSON
-      const text = await response.text();
-      let data;
-      try {
-        data = JSON.parse(text);
-      } catch (parseError) {
-        const snippet = text.substring(0, 200);
-        throw new Error(`La API no devolvió JSON válido. Respuesta: ${snippet}...`);
-      }
-
-      if (data && data.error) {
-        throw new Error(data.error);
-      }
-
-      const parsedData = Array.isArray(data) ? data : [];
-      rawData = parsedData;
-      renderTable(rawData);
-      setCache(depotKey, parsedData);
-
-    } catch (err) {
-      console.error('Error en loadData:', err);
-
-      // 3) Falló la API → intentar usar caché expirada
-      const expiredCache = getCache(currentDepot, true);
-      if (expiredCache) {
-        rawData = expiredCache;
+    // 1) Intentar caché válida (si no se fuerza refresco)
+    if (!forceRefresh) {
+      const cached = getCache(depotKey);
+      if (cached) {
+        rawData = cached;
         renderTable(rawData);
-        showWarning('Mostrando datos en caché (pueden estar desactualizados)');
-      } else {
-        showError(`Error: ${err.message}`);
-        document.getElementById('emptyState').classList.remove('hidden');
-      }
-    } finally {
-      loader.classList.add('hidden');
-      isLoading = false;
-
-      // Iniciar cooldown (siempre, incluso en error)
-      if (cooldownTimer) clearTimeout(cooldownTimer);
-      isCooldown = true;
-      updateButtonState('cooldown');
-      cooldownTimer = setTimeout(() => {
-        isCooldown = false;
+        isLoading = false;
         updateButtonState('idle');
-        cooldownTimer = null;
-      }, COOLDOWN);
+        loader.classList.add('hidden');
+        return;
+      }
     }
+
+    // 2) Fetch a la API
+    const url = `${currentConfig.url}?t=${Date.now()}`;
+    console.log('🔍 URL de la API (copia y prueba en el navegador):', url); // <-- LOG AÑADIDO
+
+    const response = await fetch(url, { mode: 'cors' });
+
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`);
+    }
+
+    // Leer el cuerpo como texto y luego parsear JSON
+    const text = await response.text();
+    let data;
+    try {
+      data = JSON.parse(text);
+    } catch (parseError) {
+      // Si no es JSON, mostramos un error sin el HTML completo
+      throw new Error(`La API no devolvió JSON. Verifica que la URL sea correcta y que el script esté publicado. URL usada: ${url}`);
+    }
+
+    if (data && data.error) {
+      throw new Error(data.error);
+    }
+
+    const parsedData = Array.isArray(data) ? data : [];
+    rawData = parsedData;
+    renderTable(rawData);
+    setCache(depotKey, parsedData);
+
+  } catch (err) {
+    console.error('Error en loadData:', err);
+
+    // 3) Falló la API → intentar usar caché expirada
+    const expiredCache = getCache(currentDepot, true);
+    if (expiredCache) {
+      rawData = expiredCache;
+      renderTable(rawData);
+      showWarning('Mostrando datos en caché (pueden estar desactualizados)');
+    } else {
+      showError(`Error: ${err.message}`);
+      document.getElementById('emptyState').classList.remove('hidden');
+    }
+  } finally {
+    loader.classList.add('hidden');
+    isLoading = false;
+
+    // Iniciar cooldown (siempre, incluso en error)
+    if (cooldownTimer) clearTimeout(cooldownTimer);
+    isCooldown = true;
+    updateButtonState('cooldown');
+    cooldownTimer = setTimeout(() => {
+      isCooldown = false;
+      updateButtonState('idle');
+      cooldownTimer = null;
+    }, COOLDOWN);
   }
+}
 
   // ============================================================
   // 13. Inicialización
